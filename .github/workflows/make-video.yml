@@ -1,0 +1,57 @@
+name: Make video
+
+on:
+  workflow_dispatch:
+    inputs:
+      script_file:
+        description: "مسار ملف السكريبت"
+        default: "scripts/script.txt"
+      mode:
+        description: "نوع الفيديو"
+        type: choice
+        default: long
+        options:
+          - long
+          - short
+      voice:
+        description: "الصوت (ar-EG-SalmaNeural / ar-EG-ShakirNeural / en-US-AndrewNeural ...)"
+        default: "ar-EG-SalmaNeural"
+      rate:
+        description: "سرعة الصوت (مثل +0% أو +10%)"
+        default: "+0%"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg fonts-noto-core
+          pip install -r requirements.txt
+
+      - name: Generate video
+        env:
+          PEXELS_API_KEY: ${{ secrets.PEXELS_API_KEY }}
+          SCRIPT_FILE: ${{ inputs.script_file }}
+          MODE: ${{ inputs.mode }}
+          VOICE: ${{ inputs.voice }}
+          RATE: ${{ inputs.rate }}
+        run: |
+          python generate.py --script "$SCRIPT_FILE" --mode "$MODE" --voice "$VOICE" --rate "$RATE"
+
+      - name: Upload video
+        uses: actions/upload-artifact@v4
+        with:
+          name: video
+          path: |
+            out/video.mp4
+            out/captions.srt
+          retention-days: 7
